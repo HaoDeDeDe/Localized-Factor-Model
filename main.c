@@ -19,7 +19,7 @@
 
 //a single cell in a response matrix
 struct response{
-    int indicator;  //-1代表没有值，0代表predict, 1代表train
+    int indicator;  
     double value;
 };
 
@@ -59,7 +59,6 @@ int main(int argc, const char * argv[]) {
     dataInitialize2(context, context_num);
     
     
-    //检查是否每个context的response matrix拥有相同数量的行
     if (context_num>1) {
         for (i=0; i<context_num-1; i++) {
             if (context[i].user_num!=context[i+1].user_num) {
@@ -69,16 +68,15 @@ int main(int argc, const char * argv[]) {
         }
     }
     
-    //为各变量和参数申请空间
     temp=0;
     for (i=0; i<context_num; i++) {
         temp=temp+context[i].item_num;
     }
     alpha=(double *)malloc(temp*sizeof(double));
     beta=(struct vector *)malloc(temp*sizeof(struct vector));
-    sigma2_y=(double *)malloc(context_num*sizeof(double));  //此处为sigma squared
-    sigma2_z=(double *)malloc(context_num*sizeof(double));  //同上
-    sigma2_u=(double *)malloc(sizeof(double));              //同上
+    sigma2_y=(double *)malloc(context_num*sizeof(double));  //sigma squared
+    sigma2_z=(double *)malloc(context_num*sizeof(double));  
+    sigma2_u=(double *)malloc(sizeof(double));              
     w=(struct matrix *)malloc(context_num*sizeof(struct matrix));
     A=(struct matrix *)malloc(context_num*sizeof(struct matrix));
     q=(int *)malloc(context_num*sizeof(int));

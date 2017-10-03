@@ -55,22 +55,3 @@ void quickSort(int ary[],int left,int right)
     return;
 }
 
-/*int main()
-{
-    int n,i=0,a[100];
-    scanf("%d",&n);
-    while(i<n)
-    {
-        scanf("%d",&a[i]);
-        i=i+1;
-    };
-    quicksort(a,0,n-1);
-    i=0;
-    while(i<n)
-    {
-        printf("%d ",a[i]);
-        i=i+1;
-    };
-    return 0;
-    
-}*/

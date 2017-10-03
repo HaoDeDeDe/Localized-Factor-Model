@@ -15,7 +15,7 @@
 
 //a single cell in a response matrix
 struct response{
-    int indicator;  //-1代表没有值，0代表predict, 1代表train
+    int indicator;  //-1 for null，0 for predict, 1 for train
     double value;
 };
 
@@ -44,13 +44,13 @@ struct indexCell{
     int *index;
 };
 
-//生成服从均匀分布的随机数
+//get uniform random variable
 double var_uniform(double min, double max){
     //srand(time(0));
     return min+(max-min)*rand()/(RAND_MAX+1.0);
 }
 
-//正态分布的密度函数
+//density for Gaussian
 double normal_pdf(double x, double mean, double std){
     if(0==std){
         std=0.000000001;
@@ -58,7 +58,7 @@ double normal_pdf(double x, double mean, double std){
     return exp(-(x-mean)*(x-mean)/(2*std*std))/(sqrt(2*3.141593)*std);
 }
 
-//生成服从正态分布的随机数
+//generate Gaussian random variable
 double var_normal(double min, double max, double mean, double std){
     double x, y, dScope;
     do{
@@ -73,7 +73,7 @@ double var_normal(double min, double max, double mean, double std){
 void paraInitialize(int context_num, struct resMatrix *context, double *alpha, double *sigma2_z, double *sigma2_y, double *sigma2_u, struct vector *beta, struct matrix *w, struct matrix *A, int *q, int *r){
     int temp, i, j, k;
     
-    //初始化qk与r
+    //initialization
     r[0]=3;
     for (k=0; k<context_num; k++) {
         q[k]=3;
@@ -84,25 +84,20 @@ void paraInitialize(int context_num, struct resMatrix *context, double *alpha, d
         temp=temp+context[k].item_num;
     }
     
-    //初始化alpha
     for (i=0; i<temp; i++) {
         alpha[i]=var_normal(-0.3, 0.3, 0, 0.1);
     }
     
-    //初始化sigma2_z
     for (k=0; k<context_num; k++) {
         sigma2_z[k]=var_normal(0.01, 0.3, 0.15, 0.05);
     }
     
-    //初始化sigma2_y
     for (k=0; k<context_num; k++) {
         sigma2_y[k]=var_normal(0.01, 0.3, 0.15, 0.05);
     }
     
-    //初始化sigma2_u
     sigma2_u[0]=var_normal(0.01, 0.3, 0.15, 0.05);
 
-    //初始化beta
     temp=0;
     for (k=0; k<context_num; k++) {
         for (j=0; j<context[k].item_num; j++) {
@@ -115,19 +110,17 @@ void paraInitialize(int context_num, struct resMatrix *context, double *alpha, d
         temp=temp+context[k].item_num;
     }
     
-    //初始化w
     for (k=0; k<context_num; k++) {
         w[k].row_num=context[k].user_num;
         w[k].col_num=context[k].item_num;
         w[k].m=(double *)malloc(w[k].row_num*w[k].col_num*sizeof(double));
         for (i=0; i<w[k].row_num; i++) {
             for (j=0; j<w[k].col_num; j++) {
-                w[k].m[i*w[k].col_num+j]=1;    //可自行更换
+                w[k].m[i*w[k].col_num+j]=1;    
             }
         }
     }
     
-    //初始化A
     for (k=0; k<context_num; k++) {
         A[k].row_num=q[k];
         A[k].col_num=r[0];
@@ -150,23 +143,17 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
     //每个user一棵树，各树之间无关系，所以按user为单位进行循环计算
     for (i=0; i<context[0].user_num; i++) {
         
-        //d是vector的数组，但是其中每个vector的长度可能不一样
+        //d is an array of vector with potentially different length
+        //C, D, S, E, H and R is each an array of matrices with potentially different shapes
         struct vector * d=(struct vector *)malloc(context_num*sizeof(struct vector));
-        //C是matrix的数组，但是其中每个matrix的维度可能不一样
         struct matrix * C=(struct matrix *)malloc(context_num*sizeof(struct matrix));
-        //D是matrix的数组，但是其中每个matrix的维度可能不一样
         struct matrix * D=(struct matrix *)malloc(context_num*sizeof(struct matrix));
-        //S是matrix的数组，但是其中每个matrix的维度可能不一样
         struct matrix * S=(struct matrix *)malloc(context_num*sizeof(struct matrix));
-        //E是matrix的数组，但是其中每个matrix的维度可能不一样
         struct matrix * E=(struct matrix *)malloc(context_num*sizeof(struct matrix));
-        //H是matrix的数组，但是其中每个matrix的维度可能不一样
         struct matrix * H=(struct matrix *)malloc(context_num*sizeof(struct matrix));
-        //R是matrix的数组，但是其中每个matrix的维度可能不一样
         struct matrix * R=(struct matrix *)malloc(context_num*sizeof(struct matrix));
         
-        //接下来构造以上变量
-        //构造dik
+        //construct dik
         temp=0;
         for (k=0; k<context_num; k++) {
             if (J[i*context_num+k].num==0) {
@@ -183,7 +170,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             temp=temp+context[k].item_num;
         }
         
-        //构造Cik
+        //construct Cik
         temp=0;
         for (k=0; k<context_num; k++) {
             if (J[i*context_num+k].num==0) {
@@ -204,7 +191,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             temp=temp+context[k].item_num;
         }
         
-        //构造Dik
+        //construct Dik
         for (k=0; k<context_num; k++) {
             if (J[i*context_num+k].num==0) {
                 D[k].row_num=0;
@@ -228,7 +215,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //构造Sik
+        //construct Sik
         for (k=0; k<context_num; k++) {
             matrix1=matrixTransit(A[k].m, A[k].row_num, A[k].col_num);
             
@@ -275,7 +262,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             free(matrix2);
         }
         
-        //构造Eik
+        //construct Eik
         for (k=0; k<context_num; k++) {
             matrix1=matrixTransit(C[k].m, C[k].row_num, C[k].col_num);
             
@@ -319,7 +306,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
         
         }
         
-        //构造Hik;
+        //construct Hik;
         for (k=0; k<context_num; k++) {
             matrix1=matrixTransit(A[k].m, A[k].row_num, A[k].col_num);
             
@@ -362,7 +349,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //构造Rik
+        //construct Rik
         for (k=0; k<context_num; k++) {
             matrix1=matrixInverse(S[k].m, S[k].row_num, S[k].col_num);
             
@@ -421,7 +408,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //计算zik|ik
+        //calculate zik|ik
         struct vector *Ez_cd=(struct vector *)malloc(context_num*sizeof(struct vector));
         struct matrix *Vz_cd=(struct matrix *)malloc(context_num*sizeof(struct matrix));
         
@@ -505,7 +492,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
 
         }
             
-        //计算Vu_cd ik
+        //calculate Vu_cd ik
         struct matrix * Vu_cd=(struct matrix *)malloc(context_num*sizeof(struct matrix));
         for (k=0; k<context_num; k++) {
             matrix1=matrixTransit(H[k].m, H[k].row_num, H[k].col_num);
@@ -539,7 +526,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //计算Vui, Vu的空间不用free, Vui.m在覆盖前要free
+        //calculate Vui
         if (Vu[i].m!=NULL) {
             free(Vu[i].m);
         }
@@ -600,7 +587,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             continue;
         }
         
-        //计算Eu, Eu的空间不用free, Eui.m在覆盖前要free
+        //calculate Eu
         if (Eu[i].v!=NULL) {
             free(Eu[i].v);
         }
@@ -648,7 +635,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
         Eu[i].length=Vu[i].row_num;
         free(matrix1);
         
-        //计算Ez ik, Ez的空间不用free, Ez ik.v的空间在覆盖前要free
+        //calculate Ez ik
         for (k=0; k<context_num; k++) {
             if (Ez[k*context[0].user_num+i].v!=NULL) {
                 free(Ez[k*context[0].user_num+i].v);
@@ -709,7 +696,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //计算Vz ik, Vz的空间不用free, Vz ik.m在覆盖前要free
+        //calculate Vz ik
         for (k=0; k<context_num; k++) {
             if (Vz[k*context[0].user_num+i].m!=NULL) {
                 free(Vz[k*context[0].user_num+i].m);
@@ -773,7 +760,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //计算Covzu, Covzu的空间不用free, Covzu ik.m覆盖前要free
+        //calculate Covzu
         for (k=0; k<context_num; k++) {
             if (Covzu[k*context[0].user_num+i].m!=NULL) {
                 free(Covzu[k*context[0].user_num+i].m);
@@ -803,7 +790,7 @@ void EStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //清理已分配的内存
+        //set space free
         for (k=0; k<context_num; k++) {
             if (d[k].v!=NULL) {
                 free(d[k].v);
@@ -874,7 +861,7 @@ void MStep(int context_num, struct resMatrix *context, double *alpha, double *si
     double *matrix1, *matrix2, *matrix3, *matrix4, *matrix5;
     struct indexCell *I;
     
-    //统计I={i: k belongs to Ki}
+    //get I={i: k belongs to Ki}
     I=(struct indexCell *)malloc(context_num*sizeof(struct indexCell));
     for (k=0; k<context_num; k++) {
         I[k].num=0;
@@ -904,10 +891,10 @@ void MStep(int context_num, struct resMatrix *context, double *alpha, double *si
     
     for (k=0; k<context_num; k++) {
        
-        //计算Ak,l 与 loss l
+        //calculate Ak,l and loss l
         for (l=0; l<A[0].row_num; l++) {
             
-            //计算Ak,l
+            //calculate Ak,l
             matrix1=(double *)malloc(r[0]*r[0]*sizeof(double));
             for (i=0; i<r[0]; i++) {
                 for (t=0; t<r[0]; t++) {
@@ -989,7 +976,7 @@ void MStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
             if (matrix1!=NULL) {
                 matrix3=matrixInverse(matrix1, r[0], r[0]);
-                //free(matrix1);    matrix1不用free,因为计算loss l时还会用到
+                //free(matrix1);    
             }
             else{
                 printf("fail calculating A %d %d\n", k, l);
@@ -999,14 +986,14 @@ void MStep(int context_num, struct resMatrix *context, double *alpha, double *si
                 A_rows[l].length=r[0];
                 A_rows[l].v=matrixMultiply(matrix3, matrix2, r[0], r[0], r[0], 1);
                 free(matrix3);
-                //free(matrix2);    matrix2不用free，因为计算loss 了时还会用到
+                //free(matrix2); 
             }
             else{
                 printf("fail calculating A %d %d\n", k, l);
                 continue;
             }
             
-            //计算loss l
+            //calculate loss l
             loss[l]=0;
             temp=0;
             for (t=0; t<I[k].num; t++) {
@@ -1037,21 +1024,20 @@ void MStep(int context_num, struct resMatrix *context, double *alpha, double *si
             }
         }
         
-        //构造Ak
+        //construct Ak
         for (l=0; l<A[k].row_num; l++) {
             for (t=0; t<A[k].col_num; t++) {
                 A[k].m[l*A[k].col_num+t]=A_rows[l].v[t];
             }
         }
         
-        //计算sigma2_z
+        //calculate sigma2_z
         temp=0;
         for (l=0; l<A[k].row_num; l++) {
             temp=temp+loss[l];
         }
         sigma2_z[k]=temp/(q[k]*I[k].num);
         
-        //free原来留下的痕迹， A_rows需要，因为它的元素里有指针，而loss不需要，因为它的元素就是数
         for (l=0; l<A[k].row_num; l++) {
             if (A_rows[l].v!=NULL) {
                 free(A_rows[l].v);
@@ -1061,7 +1047,7 @@ void MStep(int context_num, struct resMatrix *context, double *alpha, double *si
     free(A_rows);
     free(loss);
     
-    //统计I={i: k belongs to Ki & j belongs to Jik}
+    //get I={i: k belongs to Ki & j belongs to Jik}
     temp=0;
     for (k=0; k<context_num; k++) {
         temp=temp+context[k].item_num;
@@ -1247,13 +1233,11 @@ void MStep(int context_num, struct resMatrix *context, double *alpha, double *si
         }
         sigma2_y[k]=sigma2_y[k]/sum;
         
-        //本轮循环收尾工作
         free(loss);
         temp=temp+context[k].item_num;
     }
     
     
-    //对I的空间进行free
     temp=0;
     for (k=0; k<context_num; k++) {
         for (j=0; j<context[k].item_num; j++) {
@@ -1349,12 +1333,12 @@ void fitting(int context_num, struct resMatrix *context, double *alpha, double *
     
     int i,j,k,temp;
     
-    //初始化参数
+    //initialize parameters
     paraInitialize(context_num, context, alpha, sigma2_z, sigma2_y, sigma2_u, beta, w, A, q, r);
     
     struct indexCell *J=(struct indexCell *)malloc(context_num*context[0].user_num*sizeof(struct indexCell));
     
-    //统计并构造Jik,其中J[i][k].j_index数组中的元素指的是，在context k+1中user i有数据的item 号-1
+    //construct Jik
     for (i=0; i<context[0].user_num; i++) {
         for (k=0; k<context_num; k++) {
             temp=0;
@@ -1363,7 +1347,7 @@ void fitting(int context_num, struct resMatrix *context, double *alpha, double *
                     temp++;
                 }
             }
-            J[i*context_num+k].num=temp;   //同时起到看user i在context k中有没有数据的作用
+            J[i*context_num+k].num=temp; 
             if(temp>0)  J[i*context_num+k].index=(int *)malloc(temp*sizeof(int));
             else    J[i*context_num+k].index=NULL;
             temp=0;
